@@ -1,9 +1,18 @@
 language: python
 python:
+- '2.6'
 - '2.7'
+- '3.2'
+- '3.3'
+- '3.4'
+- '3.5'
 install:
 - pip install -U setuptools
-script: true
+- pip install tox-travis
+- if [[ $TRAVIS_PYTHON_VERSION == 3.2 ]]; then pip install "virtualenv<14.0.0"; fi
+script:
+- export CURRENT_BRANCH=$(if [ -n "$TRAVIS_TAG" ]; then echo "master"; else echo "$TRAVIS_BRANCH"; fi)
+- tox
 after_success: python setup.py sdist bdist_wheel
 deploy:
   provider: releases
@@ -16,4 +25,5 @@ deploy:
   - "dist/oem_client_provider_package-*"
   on:
     repo: OpenEntityMap/oem-client-provider-package
+    condition: $TRAVIS_PYTHON_VERSION = "2.7"
     tags: true
