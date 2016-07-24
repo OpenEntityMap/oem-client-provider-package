@@ -1,6 +1,7 @@
 from oem.core.providers.base import Provider
 
 from semantic_version import Version
+from six.moves import xrange
 import json
 import logging
 import os
@@ -137,26 +138,40 @@ class PackageProvider(Provider):
         return True
 
     def _parse_database_name(self, name, identifiers):
-        parts = name.split('_', 4)
+        parts = name.split('_')
 
         # Parse parts
         d_source = None
         d_target = None
         d_format = None
 
-        if len(parts) >= 4:
-            d_source = parts[2]
-            d_target = parts[3]
+        for end in xrange(len(parts), 3, -1):
+            d_collection = '_'.join(parts[2:end])
 
-        if len(parts) >= 5:
-            d_format = parts[4]
+            # Find matching identifier
+            match = False
+
+            for (source, target) in identifiers:
+                collection = '%s_%s' % (
+                    source.replace(':', '_'),
+                    target.replace(':', '_')
+                )
+
+                if d_collection == collection:
+                    d_source = source
+                    d_target = target
+                    match = True
+                    break
+
+            if not match:
+                continue
+
+            # Found match
+            if end < len(parts):
+                d_format = '_'.join(parts[end:])
 
         # Ensure name is valid
         if not d_source or not d_target:
-            return None, None, None
-
-        # Ensure database matches source + target
-        if (d_source, d_target) not in identifiers:
             return None, None, None
 
         # Ensure format is valid
@@ -198,7 +213,7 @@ class PackageProvider(Provider):
         candidates.sort(key=sort_key, reverse=True)
 
     def _pick_format(self, database_path, source):
-        collection_path = os.path.join(database_path, source)
+        collection_path = os.path.join(database_path, source.replace(':', '_'))
 
         # Retrieve available index formats
         names = os.listdir(collection_path)
